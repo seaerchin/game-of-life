@@ -65,7 +65,7 @@ impl Universe {
         for _ in 0..self.framerate {
             print!("{}", self.draw());
             self.update();
-            print!("\x1B[2J\x1B[1;1H");
+            print!("\x1B[1;1H");
             sleep(duration);
         }
     }
