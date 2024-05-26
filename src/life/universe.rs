@@ -75,8 +75,55 @@ impl Universe {
         }
         println!("");
     }
-
+    // NOTE: Updates cells in place
     fn update(&mut self) {
+        let mut next_state = vec![];
+
+        for (pos, c) in self.cells.iter().enumerate() {
+            let h = pos.div_euclid(self.height as usize);
+            let w = pos.rem_euclid(self.height as usize);
+            let neighbours = self.neighbours_of(w, h);
+            let mut live_count = 0;
+            for &c in neighbours.iter() {
+                if let Cell::Alive = c {
+                    live_count += 1;
+                }
+            }
+
+            match c {
+                Cell::Dead => {
+                    if live_count == 3 {
+                        next_state.push(Cell::Alive)
+                    } else {
+                        next_state.push(Cell::Dead)
+                    }
+                }
+                Cell::Alive => {
+                    if live_count < 2 {
+                        return next_state.push(Cell::Dead);
+                    }
+                    if live_count < 4 {
+                        return next_state.push(Cell::Alive);
+                    }
+                    if live_count >= 4 {
+                        return next_state.push(Cell::Dead);
+                    }
+                }
+            }
+        }
+
+        self.cells = next_state;
+    }
+
+    fn get_cell_at(self: &Self, w: u32, h: u32) -> Cell {
+        todo!()
+    }
+
+    fn next_state(c: Cell) -> Cell {
+        todo!()
+    }
+
+    fn neighbours_of(&self, w: usize, h: usize) -> Vec<Cell> {
         todo!()
     }
 }
