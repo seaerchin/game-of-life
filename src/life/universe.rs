@@ -22,7 +22,7 @@ pub struct Universe {
 
 impl fmt::Display for Universe {
     fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        self.draw();
+        print!("{}", self.draw());
         Ok(())
     }
 }
@@ -48,47 +48,48 @@ impl Universe {
         }
     }
 
-    pub fn draw(self: &Self) {
+    pub fn draw(self: &Self) -> String {
+        let mut output: Vec<&str> = vec![];
         for row in 0..self.height {
-            self.render_row(row);
+            let mut row = self.render_row(row);
+            output.append(&mut row)
         }
+        output.join("")
     }
+
     // TODO: add in proper sleep
     // for now, we will render at 1 fps
     pub fn tick(self: &mut Self) {
-        let duration = Duration::new(1, 0);
+        let nanos = (1 / self.framerate) as u32 * (10_u32.pow(9));
+        let duration = Duration::new(0, nanos);
         for _ in 0..self.framerate {
-            self.draw();
+            print!("{}", self.draw());
             self.update();
             print!("\x1B[2J\x1B[1;1H");
             sleep(duration);
         }
     }
 
-    pub fn render_row(&self, row: u32) {
+    pub fn render_row(&self, row: u32) -> Vec<&str> {
+        let mut output = vec![];
         for cur_col in 0..self.width {
             let idx = row * self.width + cur_col;
             let cur_cell = self.cells.get(idx as usize);
             if let Some(c) = cur_cell {
-                c.render();
+                output.push(c.render());
             }
         }
-        println!("");
+        output.push("\n");
+        output
     }
     // NOTE: Updates cells in place
     fn update(&mut self) {
         let mut next_state = vec![];
 
         for (pos, c) in self.cells.iter().enumerate() {
-            let h = pos.div_euclid(self.height as usize);
-            let w = pos.rem_euclid(self.height as usize);
-            let neighbours = self.neighbours_of(w, h);
-            let mut live_count = 0;
-            for &c in neighbours.iter() {
-                if let Cell::Alive = c {
-                    live_count += 1;
-                }
-            }
+            let h = pos.div_euclid(self.height as usize) as u32;
+            let w = pos.rem_euclid(self.height as usize) as u32;
+            let live_count = self.live_neighbor_count(h, w);
 
             match c {
                 Cell::Dead => {
@@ -100,13 +101,13 @@ impl Universe {
                 }
                 Cell::Alive => {
                     if live_count < 2 {
-                        return next_state.push(Cell::Dead);
+                        next_state.push(Cell::Dead);
                     }
-                    if live_count < 4 {
-                        return next_state.push(Cell::Alive);
+                    if live_count <= 3 && live_count >= 2 {
+                        next_state.push(Cell::Alive);
                     }
                     if live_count >= 4 {
-                        return next_state.push(Cell::Dead);
+                        next_state.push(Cell::Dead);
                     }
                 }
             }
@@ -115,28 +116,33 @@ impl Universe {
         self.cells = next_state;
     }
 
-    fn get_cell_at(self: &Self, w: u32, h: u32) -> Cell {
-        todo!()
+    fn get_index(&self, row: u32, column: u32) -> usize {
+        (row * self.width + column) as usize
     }
 
-    fn next_state(c: Cell) -> Cell {
-        todo!()
-    }
+    fn live_neighbor_count(&self, row: u32, column: u32) -> u8 {
+        let mut count = 0;
+        for delta_row in [self.height - 1, 0, 1].iter().cloned() {
+            for delta_col in [self.width - 1, 0, 1].iter().cloned() {
+                if delta_row == 0 && delta_col == 0 {
+                    continue;
+                }
 
-    fn neighbours_of(&self, w: usize, h: usize) -> Vec<Cell> {
-        todo!()
+                let neighbor_row = (row + delta_row) % self.height;
+                let neighbor_col = (column + delta_col) % self.width;
+                let idx = self.get_index(neighbor_row, neighbor_col);
+                count += self.cells[idx] as u8;
+            }
+        }
+        count
     }
 }
 
 impl Cell {
-    fn render(&self) {
+    fn render(&self) -> &str {
         match self {
-            Self::Alive => {
-                print!("{}", LIVE_CELL);
-            }
-            Self::Dead => {
-                print!("{}", DEAD_CELL);
-            }
+            Self::Alive => LIVE_CELL,
+            Self::Dead => DEAD_CELL,
         }
     }
 }
